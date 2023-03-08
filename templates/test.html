@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <title>Document</title>
+    <style>
+        @import url("https://fonts.googleapis.com/css?family=Raleway:400,400i,700");
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player {
+            position: absolute;
+            bottom: -32px;
+            width: 100%;
+            opacity: 0.5;
+            z-index: 100;
+            transition: all 200ms;
+        }
+
+        #hot_edge {
+            align-self: flex-end;
+            position: absolute;
+            width: 100%;
+            height: 64px;
+            opacity: 0.5;
+            z-index: 101;
+        }
+
+        .player_shown {
+            bottom: 0;
+        }
+
+        #music {
+            display: none;
+        }
+
+        #music_display {
+            position: absolute;
+        }
+
+        .select_file {
+            font-family: Raleway, sans-serif;
+            font-size: 2.2em;
+            padding: 10px;
+            box-sizing: border-box;
+
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            color: #fff;
+
+            border-radius: 15px;
+            transition: all 200ms;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .select_file:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+        }
+
+        .select_file:active {
+            background-color: transparent;
+            box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+            border: 1px solid #fff;
+        }
+
+        .bg {
+            position: absolute;
+
+            -webkit-filter: blur(12px);
+            -moz-filter: blur(12px);
+            -o-filter: blur(12px);
+            -ms-filter: blur(12px);
+            filter: blur(12px);
+
+            height: 110%;
+            width: 110%;
+            left: -5%;
+            top: -5%;
+
+            background: url(https://pre00.deviantart.net/6b7d/th/pre/f/2016/308/a/e/flat_forest_wallpaper_by_brosproduction-dana96t.jpg);
+            background-position: center;
+            background-size: 150% 100%;
+            z-index: -1;
+        }
+
+        .moveup {
+            position: absolute;
+            top: 1%;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<div id="hot_edge">
+    <audio class="player player_shown" controls id="player"></audio>
+    <input accept="audio/*" id="music" name="music" type="file">
+</div>
+<label class="select_file" for="music" id="sfl">Select File</label>
+
+<canvas id="music_display">
+    ERROR
+</canvas>
+<!-- <p id="debug">DBG</p> -->
+</body>
+<script>
+    var BAR_PAD = 10;
+var BAR_WIDTH = 5;
+var MAX_BARS = 70;
+var MAX_BG_SCALE = 20;
+var SMOOTHING_SAMPLES = 10;
+
+var sfbutton = document.getElementById("sfl");
+var bg = document.getElementById("bg");
+var player = document.getElementById("player");
+var fileTag = document.getElementById("music");
+var canvas = document.getElementById("music_display");
+var ctx = canvas.getContext("2d");
+var audioCtx, analyser, source;
+
+setTimeout(function() { player.classList.remove("player_shown"); }, 2500);
+
+var hot_edge = document.getElementById("hot_edge");
+hot_edge.onmouseenter = function() {
+	player.classList.add("player_shown");
+};
+
+hot_edge.onmouseleave = function() {
+	player.classList.remove("player_shown");
+};
+
+canvas.width = window.innerWidth * 0.8;
+canvas.height = window.innerHeight * 0.4;
+
+window.onresize = function() {
+	canvas.width = window.innerWidth * 0.8;
+	canvas.height = window.innerHeight * 0.4;
+}
+
+function draw_bars(values) {
+	var len = values.length - (~~(values.length / MAX_BARS)*4);
+	var normFac = 255;
+	var maxValue = normFac;
+	var istep = ~~(len / MAX_BARS);
+	var step = canvas.width / MAX_BARS;
+	var x = BAR_WIDTH;
+	var height = (canvas.height - (BAR_PAD * 2));
+
+	for (var i = 0; i < len; i+=istep) {
+		var v = (values[i] / maxValue);
+		var h = v * height;
+		var y = height / 2 - h / 2;
+		ctx.beginPath();
+		ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+		ctx.shadowBlur = 8;
+		ctx.shadowOffsetX = 0;
+		ctx.shadowOffsetY = 4;
+		ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+		ctx.lineWidth = BAR_WIDTH;
+		ctx.lineCap = 'round';
+		ctx.moveTo(x, y);
+		ctx.lineTo(x, y+h);
+		ctx.stroke();
+		x += step;
+	}
+
+	// Background size change with bass
+	var fac = 0.0;
+	var div = 0;
+	for (var i = 0; i < len-SMOOTHING_SAMPLES; i++) {
+		var avgN = 0.0;
+		for (var j = 0; j < SMOOTHING_SAMPLES; j++) {
+			avgN += Math.abs(values[i+j] / maxValue * 2.0);
+		}
+		avgN /= SMOOTHING_SAMPLES;
+
+		fac += avgN;
+		div++;
+	}
+	fac /= div;
+	fac *= MAX_BG_SCALE;
+
+	var szW = ~~(150+fac);
+	var szH = ~~(100+fac);
+	var sz = szW.toString()+"% "+szH.toString()+"%";
+	bg.style.backgroundSize=sz;
+}
+
+function mainloop() {
+	var fbc = new Uint8Array(analyser.frequencyBinCount);
+	analyser.getByteFrequencyData(fbc);
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	draw_bars(fbc);
+
+	requestAnimationFrame(mainloop);
+}
+
+fileTag.onchange = function(e) {
+	player.src = URL.createObjectURL(this.files[0]);
+	player.load();
+	sfbutton.classList.add("moveup");
+
+	audioCtx = new AudioContext();
+	analyser = audioCtx.createAnalyser();
+	source = audioCtx.createMediaElementSource(player);
+	source.connect(analyser);
+	analyser.connect(audioCtx.destination);
+
+	player.play();
+	mainloop();
+};
+
+</script>
+</html>
