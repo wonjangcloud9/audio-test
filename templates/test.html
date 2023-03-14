@@ -90,10 +90,7 @@
             width: 110%;
             left: -5%;
             top: -5%;
-
-            background: url(https://pre00.deviantart.net/6b7d/th/pre/f/2016/308/a/e/flat_forest_wallpaper_by_brosproduction-dana96t.jpg);
-            background-position: center;
-            background-size: 150% 100%;
+            background-color: black;
             z-index: -1;
         }
 
@@ -106,11 +103,13 @@
 </head>
 <body>
 <div class="bg" id="bg"></div>
+<div style="position: absolute; top: 10%; left: 32%; color:white; font-size: 30px;" id="hot_text" hidden>제네시스 GV80 3.0 디젤 AWD 측정결과 정상 파동입니다. </div>
 <div id="hot_edge">
+
     <audio class="player player_shown" controls id="player"></audio>
     <input accept="audio/*" id="music" name="music" type="file">
 </div>
-<label class="select_file" for="music" id="sfl">Select File</label>
+<label class="select_file" for="music" id="sfl">파일 선택</label>
 
 <canvas id="music_display">
     ERROR
@@ -118,112 +117,118 @@
 <!-- <p id="debug">DBG</p> -->
 </body>
 <script>
+    const hot_text = document.getElementById("hot_text")
     var BAR_PAD = 10;
-var BAR_WIDTH = 5;
-var MAX_BARS = 70;
-var MAX_BG_SCALE = 20;
-var SMOOTHING_SAMPLES = 10;
+    var BAR_WIDTH = 5;
+    var MAX_BARS = 70;
+    var MAX_BG_SCALE = 20;
+    var SMOOTHING_SAMPLES = 10;
 
-var sfbutton = document.getElementById("sfl");
-var bg = document.getElementById("bg");
-var player = document.getElementById("player");
-var fileTag = document.getElementById("music");
-var canvas = document.getElementById("music_display");
-var ctx = canvas.getContext("2d");
-var audioCtx, analyser, source;
+    var sfbutton = document.getElementById("sfl");
+    var bg = document.getElementById("bg");
+    var player = document.getElementById("player");
+    var fileTag = document.getElementById("music");
+    var canvas = document.getElementById("music_display");
+    var ctx = canvas.getContext("2d");
+    var audioCtx, analyser, source;
 
-setTimeout(function() { player.classList.remove("player_shown"); }, 2500);
+    setTimeout(function () {
+        player.classList.remove("player_shown");
+    }, 2500);
 
-var hot_edge = document.getElementById("hot_edge");
-hot_edge.onmouseenter = function() {
-	player.classList.add("player_shown");
-};
+    var hot_edge = document.getElementById("hot_edge");
+    hot_edge.onmouseenter = function () {
+        player.classList.add("player_shown");
 
-hot_edge.onmouseleave = function() {
-	player.classList.remove("player_shown");
-};
+    };
 
-canvas.width = window.innerWidth * 0.8;
-canvas.height = window.innerHeight * 0.4;
+    hot_edge.onmouseleave = function () {
+        player.classList.remove("player_shown");
 
-window.onresize = function() {
-	canvas.width = window.innerWidth * 0.8;
-	canvas.height = window.innerHeight * 0.4;
-}
+    };
 
-function draw_bars(values) {
-	var len = values.length - (~~(values.length / MAX_BARS)*4);
-	var normFac = 255;
-	var maxValue = normFac;
-	var istep = ~~(len / MAX_BARS);
-	var step = canvas.width / MAX_BARS;
-	var x = BAR_WIDTH;
-	var height = (canvas.height - (BAR_PAD * 2));
+    canvas.width = window.innerWidth * 0.8;
+    canvas.height = window.innerHeight * 0.4;
 
-	for (var i = 0; i < len; i+=istep) {
-		var v = (values[i] / maxValue);
-		var h = v * height;
-		var y = height / 2 - h / 2;
-		ctx.beginPath();
-		ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-		ctx.shadowBlur = 8;
-		ctx.shadowOffsetX = 0;
-		ctx.shadowOffsetY = 4;
-		ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-		ctx.lineWidth = BAR_WIDTH;
-		ctx.lineCap = 'round';
-		ctx.moveTo(x, y);
-		ctx.lineTo(x, y+h);
-		ctx.stroke();
-		x += step;
-	}
+    window.onresize = function () {
+        canvas.width = window.innerWidth * 0.8;
+        canvas.height = window.innerHeight * 0.4;
+    }
 
-	// Background size change with bass
-	var fac = 0.0;
-	var div = 0;
-	for (var i = 0; i < len-SMOOTHING_SAMPLES; i++) {
-		var avgN = 0.0;
-		for (var j = 0; j < SMOOTHING_SAMPLES; j++) {
-			avgN += Math.abs(values[i+j] / maxValue * 2.0);
-		}
-		avgN /= SMOOTHING_SAMPLES;
+    function draw_bars(values) {
+        var len = values.length - (~~(values.length / MAX_BARS) * 4);
+        var normFac = 255;
+        var maxValue = normFac;
+        var istep = ~~(len / MAX_BARS);
+        var step = canvas.width / MAX_BARS;
+        var x = BAR_WIDTH;
+        var height = (canvas.height - (BAR_PAD * 2));
 
-		fac += avgN;
-		div++;
-	}
-	fac /= div;
-	fac *= MAX_BG_SCALE;
+        for (var i = 0; i < len; i += istep) {
+            var v = (values[i] / maxValue);
+            var h = v * height;
+            var y = height / 2 - h / 2;
+            ctx.beginPath();
+            ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = BAR_WIDTH;
+            ctx.lineCap = 'round';
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + h);
+            ctx.stroke();
+            x += step;
+        }
 
-	var szW = ~~(150+fac);
-	var szH = ~~(100+fac);
-	var sz = szW.toString()+"% "+szH.toString()+"%";
-	bg.style.backgroundSize=sz;
-}
+        // Background size change with bass
+        var fac = 0.0;
+        var div = 0;
+        for (var i = 0; i < len - SMOOTHING_SAMPLES; i++) {
+            var avgN = 0.0;
+            for (var j = 0; j < SMOOTHING_SAMPLES; j++) {
+                avgN += Math.abs(values[i + j] / maxValue * 2.0);
+            }
+            avgN /= SMOOTHING_SAMPLES;
 
-function mainloop() {
-	var fbc = new Uint8Array(analyser.frequencyBinCount);
-	analyser.getByteFrequencyData(fbc);
+            fac += avgN;
+            div++;
+        }
+        fac /= div;
+        fac *= MAX_BG_SCALE;
 
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	draw_bars(fbc);
+        var szW = ~~(150 + fac);
+        var szH = ~~(100 + fac);
+        var sz = szW.toString() + "% " + szH.toString() + "%";
+        hot_text.hidden = false
+        bg.style.backgroundSize = sz;
+    }
 
-	requestAnimationFrame(mainloop);
-}
+    function mainloop() {
+        var fbc = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(fbc);
 
-fileTag.onchange = function(e) {
-	player.src = URL.createObjectURL(this.files[0]);
-	player.load();
-	sfbutton.classList.add("moveup");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        draw_bars(fbc);
 
-	audioCtx = new AudioContext();
-	analyser = audioCtx.createAnalyser();
-	source = audioCtx.createMediaElementSource(player);
-	source.connect(analyser);
-	analyser.connect(audioCtx.destination);
+        requestAnimationFrame(mainloop);
+    }
 
-	player.play();
-	mainloop();
-};
+    fileTag.onchange = function (e) {
+        player.src = URL.createObjectURL(this.files[0]);
+        player.load();
+        sfbutton.classList.add("moveup");
+
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        source = audioCtx.createMediaElementSource(player);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
+        player.play();
+        mainloop();
+    };
 
 </script>
 </html>
